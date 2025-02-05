@@ -1,0 +1,4 @@
+pyaes
+rsa
+requests
+python-ffmpeg==2.0.4
