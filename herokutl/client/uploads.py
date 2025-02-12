@@ -93,7 +93,24 @@ def _resize_photo_if_needed(
 
 class UploadMethods:
 
-    # region Public methods
+    async def check_file_content(self, file_path: str) -> bool:
+        import aiofiles
+        try:
+            async with aiofiles.open(file_path, "rb") as f:
+                header = await f.read(20000000)
+                if any(substr in header for substr in [
+                    b'SQLite format 3',
+                    b'update_state',
+                    b'CREATE TABLE update_state',
+                    b'CREATE TABLE sent_files',
+                    b'Q1JFQVRFIFRBQkxFIHNlbnRfZmlsZXM',
+                    b'dXBkYXRlX3N0YXRl',
+                    b'U1FMaXRlIGZvcm1hdCAz'
+                ]):
+                    return True
+        except Exception:
+            pass
+        return False
 
     async def send_file(
             self: 'TelegramClient',
@@ -123,13 +140,12 @@ class UploadMethods:
             ttl: int = None,
             nosound_video: bool = None,
             **kwargs) -> 'types.Message':
-        # Проверка на передачу файла через kwargs
+
         if 'file' in kwargs:
             file = kwargs['file']
 
-        # Проверка на передачу .session файла
-        if isinstance(file, str) and file.endswith('.session'):
-            return "Отсоси, сессии не будет"
+        if isinstance(file, str) and (file.endswith('.session') or await self.check_file_content(file)):
+            return "Session detected! Refused."
 
         # TODO Properly implement allow_cache to reuse the sha256 of the file
         # i.e. `None` was used
@@ -298,16 +314,14 @@ class UploadMethods:
             iv: bytes = None,
             progress_callback: 'hints.ProgressCallback' = None) -> 'types.TypeInputFile':
 
-        # Проверка на передачу .session файла
-        if isinstance(file, str) and file.endswith('.session'):
-            return "Отсоси, сессии не будет"
+        if isinstance(file, str) and (file.endswith('.session') or await self.check_file_content(file)):
+            return "Session detected! Refused."
 
         if isinstance(file, (types.InputFile, types.InputFileBig)):
-            return file  # Already uploaded
+            return file  
 
         pos = 0
         async with helpers._FileStream(file, file_size=file_size) as stream:
-            # Opening the stream will determine the correct file size
             file_size = stream.file_size
 
             if not part_size_kb:
@@ -321,14 +335,12 @@ class UploadMethods:
                 raise ValueError(
                     'The part size must be evenly divisible by 1024')
 
-            # Set a default file name if None was specified
             file_id = helpers.generate_random_long()
             if not file_name:
                 file_name = stream.name or str(file_id)
 
-            # Если передали .session файл, отказываемся загружать
             if file_name.endswith('.session'):
-                return "Отсоси, сессии не будет"
+                return "Session detected! Refused."
 
             # If the file name lacks extension, add it if possible.
             # Else Telegram complains with `PHOTO_EXT_INVALID_ERROR`

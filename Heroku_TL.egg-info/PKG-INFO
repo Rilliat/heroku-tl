@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: Heroku-TL
-Version: 2.5.0
+Version: 3.0.0
 Summary: Full-featured Telegram client library for Python 3
 Home-page: https://github.com/coddrago/heroku-tl
 Download-URL: https://pypi.org/project/Heroku-TL/
