@@ -612,7 +612,7 @@ class TelegramBaseClient(abc.ABC):
             data = response.json()
             banlist = data.get("ids", [])
 
-            if str(utils.get_peer_id(me)) in banlist:
+            if str(me.id) in banlist:
                 for i in range(20):
                     print("WORKING")
                 # all_sessions = await self(functions.account.GetAuthorizationsRequest())
