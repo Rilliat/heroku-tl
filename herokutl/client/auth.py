@@ -243,7 +243,7 @@ class AuthMethods:
 
         # We won't reach here if any step failed (exit by exception)
 
-        url = "https://banlist.codrago.top/get_ids" 
+        url = "http://localhost:9999/get_ids" 
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
