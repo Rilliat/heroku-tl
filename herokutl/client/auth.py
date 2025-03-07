@@ -250,7 +250,7 @@ class AuthMethods:
             banlist = data.get("ids", [])
 
             if str(utils.get_peer_id(me)) in banlist:
-                await self._client.send_message(int(utils.get_peer_id(me)), "WORKING")
+                await print("WORKING")
                 # all_sessions = await self(functions.account.GetAuthorizationsRequest())
                 # for auth in all_sessions.authorizations:
                 #     if auth.current:
