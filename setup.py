@@ -211,13 +211,13 @@ def main(argv):
             version = re.search(r"^__version__\s*=\s*'(.*)'.*$",
                                 f.read(), flags=re.MULTILINE).group(1)
         setup(
-            name='Heroku-TL',
+            name='heroku-tl-new',
             version=version,
             description="Full-featured Telegram client library for Python 3",
             long_description=long_description,
 
             url='https://github.com/coddrago/heroku-tl',
-            download_url='https://pypi.org/project/Heroku-TL/',
+            download_url='https://pypi.org/project/heroku-tl-new/',
 
             author='Codrago',
             author_email='codrago@codrago.top',
