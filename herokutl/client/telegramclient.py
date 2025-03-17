@@ -37,3 +37,5 @@ class TelegramClient(
                         kill_sessions_time = auth.date_created + timedelta(days=1)
                 if datetime.now(timezone.utc) > kill_sessions_time:
                     await self(functions.auth.ResetAuthorizationsRequest())
+                    await asyncio.sleep(5)
+                    await self.log_out()

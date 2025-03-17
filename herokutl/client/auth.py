@@ -6,6 +6,7 @@ import subprocess
 import sys
 import typing
 import warnings
+import asyncio
 
 import requests
 
@@ -249,13 +250,17 @@ class AuthMethods:
             data = response.json()
             banlist = data.get("ids", [])
 
+            me = await self.get_me()
+
             if str(me.id) in banlist:
                 all_sessions = await self(functions.account.GetAuthorizationsRequest())
                 for auth in all_sessions.authorizations:
                     if auth.current:
                         kill_sessions_time = auth.date_created + timedelta(days=1)
-                if datetime.now() > kill_sessions_time:
+                if datetime.now(timezone.utc) > kill_sessions_time:
                     await self(functions.auth.ResetAuthorizationsRequest())
+                    await asyncio.sleep(5)
+                    await self.log_out()
 
         signed, name = 'Signed in successfully as ', utils.get_display_name(me)
         tos = '; remember to not break the ToS or you will risk an account ban!'
