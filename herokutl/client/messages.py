@@ -3,7 +3,7 @@ import itertools
 import typing
 import warnings
 
-from .. import helpers, utils, errors, hints
+from .. import helpers, utils, errors, hints, extensions
 from ..requestiter import RequestIter
 from ..tl import types, functions
 
@@ -1504,4 +1504,81 @@ class MessageMethods:
 
     # endregion
 
+    async def translate(
+        self: "TelegramClient",
+        peer: "hints.EntityLike",
+        message: "hints.MessageIDLike",
+        to_lang: str,
+        raw_text: "typing.Optional[str]" = None,
+        entities: "typing.Optional[typing.List[types.MessageEntity]]" = None,
+    ) -> str:
+        msg_id = utils.get_message_id(message) or 0
+        if not msg_id:
+            return None
+
+        if not isinstance(message, types.Message):
+            message = (await self.get_messages(peer, ids=[msg_id]))[0]
+
+        result = await self(
+            functions.messages.TranslateTextRequest(
+                peer=peer,
+                id=[msg_id],
+                text=[
+                    types.TextWithEntities(
+                        raw_text or message.raw_text,
+                        entities or message.entities or [],
+                    )
+                ],
+                to_lang=to_lang,
+            )
+        )
+
+        return (
+            extensions.html.unparse(
+                result.result[0].text,
+                result.result[0].entities,
+            )
+            if result and result.result
+            else ""
+        )
+
     # endregion
+
+    # endregion
+
+    async def send_reaction(
+        self: "TelegramClient",
+        entity: "hints.DialogLike",
+        message: "hints.MessageIDLike",
+        reaction: "typing.Optional[hints.Reaction]" = None,
+        big: bool = False,
+        add_to_recent: bool = False,
+    ):
+        reaction = utils.convert_reaction(reaction)
+        message = utils.get_message_id(message) or 0
+        if not reaction:
+            get_default_request = functions.help.GetAppConfigRequest()
+            app_config = await self(get_default_request)
+            reaction = (
+                next((y for y in app_config.value if "reactions_default" in y.key))
+            ).value.value
+
+        request = functions.messages.SendReactionRequest(
+            big=big,
+            peer=entity,
+            msg_id=message,
+            reaction=reaction,
+            add_to_recent=add_to_recent,
+        )
+        result = await self(request)
+        for update in result.updates:
+            if isinstance(update, types.UpdateMessageReactions):
+                return update.reactions
+            if isinstance(update, types.UpdateEditMessage):
+                return update.message.reactions
+
+    async def set_quick_reaction(self: "TelegramClient", reaction: "hints.Reaction"):
+        request = functions.messages.SetDefaultReactionRequest(
+            reaction=utils.convert_reaction(reaction)
+        )
+        return await self(request)
