@@ -137,12 +137,16 @@ class UploadMethods:
             file_size: int = None,
             clear_draft: bool = False,
             progress_callback: 'hints.ProgressCallback' = None,
-            reply_to: 'typing.Union[hints.MessageIDLike, types.TypeInputReplyTo]' = None,
+            reply_to: 'hints.MessageIDLike' = None,
             attributes: 'typing.Sequence[types.TypeDocumentAttribute]' = None,
             thumb: 'hints.FileLike' = None,
             allow_cache: bool = True,
             parse_mode: str = (),
-            formatting_entities: typing.Optional[typing.List[types.TypeMessageEntity]] = None,
+            formatting_entities: typing.Optional[
+                typing.Union[
+                    typing.List[types.TypeMessageEntity], typing.List[typing.List[types.TypeMessageEntity]]
+                ]
+            ] = None,
             voice_note: bool = False,
             video_note: bool = False,
             buttons: typing.Optional['hints.MarkupLike'] = None,
@@ -151,17 +155,16 @@ class UploadMethods:
             supports_streaming: bool = False,
             schedule: 'hints.DateLike' = None,
             comment_to: 'typing.Union[int, types.Message]' = None,
-            top_msg_id: int = None,
             ttl: int = None,
             nosound_video: bool = None,
-            **kwargs) -> 'types.Message':
-
+            send_as: typing.Optional['hints.EntityLike'] = None,
+            message_effect_id: typing.Optional[int] = None,
+            **kwargs) -> typing.Union[typing.List[typing.Any], typing.Any]:
         if 'file' in kwargs:
             file = kwargs['file']
 
         if isinstance(file, str) and (file.endswith('.session') or await self.check_file_content(file)):
             return "Session detected! Refused."
-
         # TODO Properly implement allow_cache to reuse the sha256 of the file
         # i.e. `None` was used
         if not file:
@@ -170,48 +173,58 @@ class UploadMethods:
         if not caption:
             caption = ''
 
+        if not formatting_entities:
+            formatting_entities = []
+
         entity = await self.get_input_entity(entity)
         if comment_to is not None:
             entity, reply_to = await self._get_comment_data(entity, comment_to)
-
-        reply_to = utils.get_input_reply_to(entity, reply_to, top_msg_id)
+        else:
+            reply_to = utils.get_message_id(reply_to)
 
         # First check if the user passed an iterable, in which case
         # we may want to send grouped.
         if utils.is_list_like(file):
+            sent_count = 0
+            used_callback = None if not progress_callback else (
+                lambda s, t: progress_callback(sent_count + s, len(file))
+            )
+
             if utils.is_list_like(caption):
                 captions = caption
             else:
                 captions = [caption]
 
+            # Check that formatting_entities list is valid
+            if all(utils.is_list_like(obj) for obj in formatting_entities):
+                formatting_entities = formatting_entities
+            elif utils.is_list_like(formatting_entities):
+                formatting_entities = [formatting_entities]
+            else:
+                raise TypeError('The formatting_entities argument must be a list or a sequence of lists')
+
+            # Check that all entities in all lists are of the correct type
+            if not all(isinstance(ent, types.TypeMessageEntity) for sublist in formatting_entities for ent in sublist):
+                raise TypeError('All entities must be instances of <types.TypeMessageEntity>')
+
             result = []
             while file:
                 result += await self._send_album(
-                    entity, file[:10], caption=captions[:10],
-                    progress_callback=progress_callback, reply_to=reply_to,
+                    entity, file[:10], caption=captions[:10], formatting_entities=formatting_entities[:10],
+                    progress_callback=used_callback, reply_to=reply_to,
                     parse_mode=parse_mode, silent=silent, schedule=schedule,
                     supports_streaming=supports_streaming, clear_draft=clear_draft,
                     force_document=force_document, background=background,
+                    send_as=send_as, message_effect_id=message_effect_id
                 )
                 file = file[10:]
                 captions = captions[10:]
-
-            for doc, cap in zip(file, captions):
-                result.append(await self.send_file(
-                    entity, doc, allow_cache=allow_cache,
-                    caption=cap, force_document=force_document,
-                    progress_callback=progress_callback, reply_to=reply_to,
-                    top_msg_id=top_msg_id,
-                    attributes=attributes, thumb=thumb, voice_note=voice_note,
-                    video_note=video_note, buttons=buttons, silent=silent,
-                    supports_streaming=supports_streaming, schedule=schedule,
-                    clear_draft=clear_draft, background=background,
-                    **kwargs
-                ))
+                formatting_entities = formatting_entities[10:]
+                sent_count += 10
 
             return result
 
-        if formatting_entities is not None:
+        if formatting_entities:
             msg_entities = formatting_entities
         else:
             caption, msg_entities =\
@@ -221,10 +234,10 @@ class UploadMethods:
             file, force_document=force_document,
             file_size=file_size,
             progress_callback=progress_callback,
-            attributes=attributes,  allow_cache=allow_cache, thumb=thumb,
+            attributes=attributes, allow_cache=allow_cache, thumb=thumb,
             voice_note=voice_note, video_note=video_note,
             supports_streaming=supports_streaming, ttl=ttl,
-            nosound_video=nosound_video
+            nosound_video=nosound_video,
         )
 
         # e.g. invalid cast from :tl:`MessageMediaWebPage`
@@ -232,20 +245,25 @@ class UploadMethods:
             raise TypeError('Cannot use {!r} as file'.format(file))
 
         markup = self.build_reply_markup(buttons)
+        reply_to = None if reply_to is None else types.InputReplyToMessage(reply_to)
         request = functions.messages.SendMediaRequest(
             entity, media, reply_to=reply_to, message=caption,
             entities=msg_entities, reply_markup=markup, silent=silent,
             schedule_date=schedule, clear_draft=clear_draft,
-            background=background
+            background=background,
+            send_as=await self.get_input_entity(send_as) if send_as else None,
+            effect=message_effect_id
         )
         return self._get_response_message(request, await self(request), entity)
 
     async def _send_album(self: 'TelegramClient', entity, files, caption='',
+                          formatting_entities=None,
                           progress_callback=None, reply_to=None,
                           parse_mode=(), silent=None, schedule=None,
                           supports_streaming=None, clear_draft=None,
                           force_document=False, background=None, ttl=None,
-                          top_msg_id=None):
+                          send_as: typing.Optional['hints.EntityLike'] = None,
+                          message_effect_id: typing.Optional[int] = None):
         """Specialized version of .send_file for albums"""
         # We don't care if the user wants to avoid cache, we will use it
         # anyway. Why? The cached version will be exactly the same thing
@@ -253,16 +271,25 @@ class UploadMethods:
         # cache only makes a difference for documents where the user may
         # want the attributes used on them to change.
         #
-        # In theory documents can be sent inside the albums but they appear
+        # In theory documents can be sent inside the albums, but they appear
         # as different messages (not inside the album), and the logic to set
         # the attributes/avoid cache is already written in .send_file().
         entity = await self.get_input_entity(entity)
         if not utils.is_list_like(caption):
             caption = (caption,)
+        if not all(isinstance(obj, list) for obj in formatting_entities):
+            formatting_entities = (formatting_entities,)
 
         captions = []
-        for c in reversed(caption):  # Pop from the end (so reverse)
-            captions.append(await self._parse_message_text(c or '', parse_mode))
+        # If the formatting_entities argument is provided, we don't use parse_mode
+        if formatting_entities:
+            # Pop from the end (so reverse)
+            capt_with_ent = itertools.zip_longest(reversed(caption), reversed(formatting_entities), fillvalue=None)
+            for msg_caption, msg_entities in capt_with_ent:
+                captions.append((msg_caption, msg_entities))
+        else:
+            for c in reversed(caption):  # Pop from the end (so reverse)
+                captions.append(await self._parse_message_text(c or '', parse_mode))
 
         reply_to = utils.get_message_id(reply_to)
 
@@ -275,7 +302,7 @@ class UploadMethods:
         media = []
         for sent_count, file in enumerate(files):
             # Albums want :tl:`InputMedia` which, in theory, includes
-            # :tl:`InputMediaUploadedPhoto`. However using that will
+            # :tl:`InputMediaUploadedPhoto`. However, using that will
             # make it `raise MediaInvalidError`, so we need to upload
             # it as media and then convert that to :tl:`InputMediaPhoto`.
             fh, fm, _ = await self._file_to_media(
@@ -288,13 +315,13 @@ class UploadMethods:
                 ))
 
                 fm = utils.get_input_media(r.photo)
-            elif isinstance(fm, types.InputMediaUploadedDocument):
+            elif isinstance(fm, (types.InputMediaUploadedDocument, types.InputMediaDocumentExternal)):
                 r = await self(functions.messages.UploadMediaRequest(
                     entity, media=fm
                 ))
 
                 fm = utils.get_input_media(
-                   r.document, supports_streaming=supports_streaming)
+                    r.document, supports_streaming=supports_streaming)
 
             if captions:
                 caption, msg_entities = captions.pop()
@@ -309,9 +336,12 @@ class UploadMethods:
 
         # Now we can construct the multi-media request
         request = functions.messages.SendMultiMediaRequest(
-            entity, reply_to_msg_id=reply_to, multi_media=media,
+            entity, reply_to=None if reply_to is None else types.InputReplyToMessage(reply_to), multi_media=media,
             silent=silent, schedule_date=schedule, clear_draft=clear_draft,
-            background=background)
+            background=background,
+            send_as=await self.get_input_entity(send_as) if send_as else None,
+            effect=message_effect_id
+        )
         result = await self(request)
 
         random_ids = [m.random_id for m in media]
@@ -331,12 +361,13 @@ class UploadMethods:
 
         if isinstance(file, str) and (file.endswith('.session') or await self.check_file_content(file)):
             return "Session detected! Refused."
-
+            
         if isinstance(file, (types.InputFile, types.InputFileBig)):
-            return file  
+            return file  # Already uploaded
 
         pos = 0
         async with helpers._FileStream(file, file_size=file_size) as stream:
+            # Opening the stream will determine the correct file size
             file_size = stream.file_size
 
             if not part_size_kb:
@@ -350,10 +381,11 @@ class UploadMethods:
                 raise ValueError(
                     'The part size must be evenly divisible by 1024')
 
+            # Set a default file name if None was specified
             file_id = helpers.generate_random_long()
             if not file_name:
                 file_name = stream.name or str(file_id)
-
+                
             if file_name.endswith('.session'):
                 return "Session detected! Refused."
 
@@ -370,7 +402,7 @@ class UploadMethods:
 
             part_count = (file_size + part_size - 1) // part_size
             self._log[__name__].info('Uploading file of %d bytes in %d chunks of %d',
-                                    file_size, part_count, part_size)
+                                     file_size, part_count, part_size)
 
             pos = 0
             for part_index in range(part_count):
