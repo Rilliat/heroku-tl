@@ -213,16 +213,16 @@ def main(argv):
         setup(
             name='heroku-tl-new',
             version=version,
-            description="Full-featured Telegram client library for Python 3",
+            description="This library is built for the Heroku userbot and is based on Telethon.",
             long_description=long_description,
 
             url='https://github.com/coddrago/heroku-tl',
             download_url='https://pypi.org/project/heroku-tl-new/',
 
             author='Codrago',
-            author_email='codrago@codrago.top',
+            author_email='codrago@codwiz.ru',
 
-            license='MIT',
+            license='CCBYNCND V4',
 
             # See https://stackoverflow.com/a/40300957/4759433
             # -> https://www.python.org/dev/peps/pep-0345/#requires-python
@@ -261,3 +261,5 @@ def main(argv):
 if __name__ == '__main__':
     with TempWorkDir():
         main(sys.argv)
+
+ 
