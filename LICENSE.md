@@ -10,7 +10,8 @@
 3. **Разрешено только личное и немодифицированное использование.**  
 4. **Коммерческое использование проекта возможно только с согласия авторов.**  
 5. **Игнорирование просьбы удалить код из репозитория/хранилища при обнаружении нарушения приведёт к юридическим последствиям.**  
-6. **Любое нарушение данных условий приведёт к юридическим последствиям.**
+6. **Разрешено использование только официальной библиотеки, размещённой на PyPI: [heroku-tl-new](https://pypi.org/project/heroku-tl-new/)**  
+7. **Любое нарушение данных условий приведёт к юридическим последствиям.**
 
 ## Ответственность
 
@@ -47,7 +48,8 @@ Project: [Heroku-TL](https://github.com/coddrago/Heroku-TL)
 3. **Only personal and unmodified usage is permitted.**  
 4. **Commercial use is only allowed with explicit permission from the authors.**  
 5. **Ignoring a formal request to remove this code from your repository/storage will result in legal action.**  
-6. **Any violation of these terms may lead to legal consequences.**
+6. **Only the official PyPI library is allowed for use: [heroku-tl-new](https://pypi.org/project/heroku-tl-new/)**  
+7. **Any violation of these terms may lead to legal consequences.**
 
 ## Liability
 
